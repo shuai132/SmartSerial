@@ -1,5 +1,4 @@
 #include "SmartSerial.h"
-#include "serial/serial.h"
 #include "log.h"
 
 template<typename T, typename... Args>

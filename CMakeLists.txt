@@ -4,18 +4,20 @@ option(smartserial_BUILD_EXAMPLE "build example" ON)
 
 project(smartserial)
 
-set(CMAKE_CXX_STANDARD 11)
-add_compile_options(-Wall)
-
-add_library(${PROJECT_NAME} STATIC SmartSerial.cpp)
+# serialportb
+add_subdirectory(modules/serial)
+include_directories(modules/serial/include)
+link_libraries(serial)
 
 # log
 include_directories(modules/log)
 
-# serialport
-add_subdirectory(modules/serial)
-include_directories(modules/serial/include)
-link_libraries(serial)
+# common
+set(CMAKE_CXX_STANDARD 11)
+add_compile_options(-Wall)
+
+# smartserial
+add_library(${PROJECT_NAME} STATIC SmartSerial.cpp)
 
 # example
 if(smartserial_BUILD_EXAMPLE)

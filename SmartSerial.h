@@ -2,6 +2,7 @@
 
 #include <string>
 #include <thread>
+#include <functional>
 #include "serial/serial.h"
 
 class SmartSerial {
