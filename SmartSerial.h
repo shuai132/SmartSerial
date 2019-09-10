@@ -3,6 +3,8 @@
 #include <string>
 #include <thread>
 #include <functional>
+#include <atomic>
+
 #include "serial/serial.h"
 
 class SmartSerial {
@@ -38,5 +40,5 @@ private:
     static const size_t BUFFER_SIZE = 1024;
     uint8_t buffer_[BUFFER_SIZE];
 
-    bool running = true;
+    std::atomic_bool running{true};
 };

@@ -7,7 +7,8 @@ static std::unique_ptr<T> make_unique(Args&&... args) {
 }
 
 SmartSerial::SmartSerial(const std::string& port, uint32_t baudrate)
-        : serial_(make_unique<Serial>(port, baudrate)) {
+        : serial_(make_unique<Serial>("", baudrate)) {
+    serial_->setPort(port);
 
     // 读取阻塞的超时时间ms 也影响重连判断的速度 1s
     serial_->setTimeout(serial::Timeout::simpleTimeout(1000));
