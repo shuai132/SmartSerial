@@ -4,9 +4,8 @@ option(smartserial_BUILD_EXAMPLE "build example" ON)
 
 project(smartserial)
 
-# serialportb
+# serialport
 add_subdirectory(modules/serial)
-include_directories(modules/serial/include)
 link_libraries(serial)
 
 # log
@@ -18,10 +17,12 @@ add_compile_options(-Wall)
 
 # smartserial
 add_library(${PROJECT_NAME} STATIC SmartSerial.cpp)
+target_include_directories(${PROJECT_NAME} PUBLIC
+        modules/serial/include
+        .)
 
 # example
 if(smartserial_BUILD_EXAMPLE)
-    include_directories(.)
     link_libraries(${PROJECT_NAME})
-    add_executable(smartserial_exampple example/smartserial_example.cpp)
+    add_executable(smartserial_example example/smartserial_example.cpp)
 endif()
