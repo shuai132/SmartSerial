@@ -10,6 +10,14 @@ SmartSerial::SmartSerial(const std::string& port, uint32_t baudrate)
         : serial_(make_unique<Serial>("", baudrate)) {
     serial_->setPort(port);
 
+    if (!port.empty()) {
+        try {
+            serial_->open();
+        } catch (const std::exception& e) {
+            LOGE("open port exception: %s", e.what());
+        }
+    }
+
     // 读取阻塞的超时时间ms 也影响重连判断的速度 1s
     serial_->setTimeout(serial::Timeout::simpleTimeout(1000));
 
