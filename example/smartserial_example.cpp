@@ -1,33 +1,13 @@
-/***
- * This example expects the serial port has a loopback on it.
- *
- * Alternatively, you could use an Arduino:
- *
- * <pre>
- *  void setup() {
- *    Serial.begin(<insert your baudrate here>);
- *  }
- *
- *  void loop() {
- *    if (Serial.available()) {
- *      Serial.write(Serial.read());
- *    }
- *  }
- * </pre>
- */
-
 #include "SmartSerial.h"
 #include "log.h"
 
 int main(int argc, char **argv) {
-    std::string portName("/dev/tty.usbserial-1440");
-    if(argc >= 2) {
-        portName = argv[1];
-    }
+    std::string portName = argc >= 2 ? argv[1] : "/dev/ttyUSB0";
 
     SmartSerial smartSerial(portName);
 
-    smartSerial.setOnReadHandle([&](const uint8_t* data, size_t size) {
+    // handle will on other thread
+    smartSerial.setOnReadHandle([](const uint8_t* data, size_t size) {
         LOGI("on read handle: size:%zu, data:%s", size, data);
     });
 
