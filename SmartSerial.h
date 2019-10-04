@@ -16,6 +16,10 @@ public:
 
     ~SmartSerial();
 
+    // noncopyable
+    SmartSerial(const SmartSerial&) = delete;
+    void operator=(const SmartSerial&) = delete;
+
 public:
     /**
      * 设置接收的handle 注意回调将发生在其他线程
