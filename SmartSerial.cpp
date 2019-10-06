@@ -25,7 +25,7 @@ SmartSerial::SmartSerial(const std::string& port, uint32_t baudrate)
         while(running) {
             try {
                 if (not serial_->isOpen()) {
-                    LOGD("try open...");
+                    //LOGD("try open...");
                     serial_->open();
                     LOGD("open state:%d", serial_->isOpen());
                 } else {
@@ -39,7 +39,7 @@ SmartSerial::SmartSerial(const std::string& port, uint32_t baudrate)
                     }
                 }
             } catch (const std::exception& e) {
-                LOGD("monitorThread_ exception: %s", e.what());
+                //LOGD("monitorThread_ exception: %s", e.what());
                 std::this_thread::sleep_for(std::chrono::seconds(CHECK_INTERVAL_SEC));
                 serial_->close();
             }
