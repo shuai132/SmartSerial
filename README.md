@@ -1,5 +1,7 @@
 # SmartSerial
 
+[![Build Status](https://github.com/shuai132/SmartSerial/workflows/build/badge.svg)](https://github.com/shuai132/SmartSerial/actions?workflow=build)
+
 简化串口使用
 
 基于[wjwwood/serial](https://github.com/wjwwood/serial)的一个Fork: [shuai132/serial](https://github.com/shuai132/serial/tree/cmake)(cmake分支)
