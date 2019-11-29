@@ -13,6 +13,7 @@ SmartSerial::SmartSerial(const std::string& port, uint32_t baudrate)
     if (!port.empty()) {
         try {
             serial_->open();
+            updateOpenState();
         } catch (const std::exception& e) {
             LOGE("open port exception: %s", e.what());
         }
@@ -27,7 +28,7 @@ SmartSerial::SmartSerial(const std::string& port, uint32_t baudrate)
                 if (not serial_->isOpen()) {
                     //LOGD("try open...");
                     serial_->open();
-                    LOGD("open state:%d", serial_->isOpen());
+                    updateOpenState();
                 } else {
                     bool hasData = serial_->waitReadable();
                     if (hasData) {
@@ -42,6 +43,7 @@ SmartSerial::SmartSerial(const std::string& port, uint32_t baudrate)
                 //LOGD("monitorThread_ exception: %s", e.what());
                 std::this_thread::sleep_for(std::chrono::seconds(CHECK_INTERVAL_SEC));
                 serial_->close();
+                updateOpenState();
             }
         }
         serial_->close();
@@ -56,6 +58,10 @@ SmartSerial::~SmartSerial() {
 
 void SmartSerial::setOnReadHandle(const OnReadHandle& handle) {
     onReadHandle_ = handle;
+}
+
+void SmartSerial::setOnOpenHandle(const OnOpenHandle& handle) {
+    onOpenHandle_ = handle;
 }
 
 bool SmartSerial::write(const uint8_t* data, size_t size) {
@@ -87,4 +93,12 @@ bool SmartSerial::write(const std::vector<uint8_t>& data) {
 
 SmartSerial::Serial* SmartSerial::getSerial() {
     return serial_.get();
+}
+
+void SmartSerial::updateOpenState() {
+    bool isOpen = serial_->isOpen();
+    LOGD("open state:%d", isOpen);
+    if (onOpenHandle_) {
+        onOpenHandle_(isOpen);
+    }
 }
