@@ -1,4 +1,7 @@
 #include "SmartSerial.h"
+
+#include <utility>
+#include <regex>
 #include "log.h"
 
 template<typename T, typename... Args>
@@ -23,10 +26,11 @@ SmartSerial::SmartSerial(const std::string& port, uint32_t baudrate)
     serial_->setTimeout(serial::Timeout::simpleTimeout(1000));
 
     auto thread = new std::thread([this]{
-        while(running) {
+        while(running_) {
             try {
                 if (not serial_->isOpen()) {
-                    LOGD("try open...");
+                    serial_->setPort(guessPortName());
+                    LOGD("try open: %s", serial_->getPort().c_str());
                     serial_->open();
                     updateOpenState();
                 } else {
@@ -60,7 +64,7 @@ SmartSerial::SmartSerial(const std::string& port, uint32_t baudrate)
 }
 
 SmartSerial::~SmartSerial() {
-    running = false;
+    running_ = false;
     monitorThread_->join();
 }
 
@@ -109,4 +113,47 @@ void SmartSerial::updateOpenState() {
     if (onOpenHandle_) {
         onOpenHandle_(isOpen);
     }
+}
+
+void SmartSerial::setPortName(std::string portName) {
+    LOGD("setPortName: %s", portName.c_str());
+    portName_ = std::move(portName);
+}
+
+std::string SmartSerial::guessPortName() {
+    if (!portName_.empty())
+        return portName_;
+
+    auto ports = serial::list_ports();
+    for (const auto& info : ports) {
+        const auto& hardwareId = info.hardware_id;
+        // mac: USB VID:PID=1234:5740 SNR=8D8842A64955
+        // lin: USB VID:PID=1234:5740 SNR=8D8842A64955
+        // win: USB\VID_1234&PID_5740&REV_0200
+
+        if (hardwareId == "n/a") continue;
+
+        if (VID_.empty() and PID_.empty()) {
+            LOGD("auto select a port: %s", info.port.c_str());
+            return info.port;
+        }
+
+#if defined(_WIN32)
+        std::regex re("VID_(.*)&PID_(.*)&");
+#else
+        std::regex re("VID:PID=(.*):(.*) ");
+#endif
+        std::smatch results;
+        auto r = std::regex_search(hardwareId, results, re);
+        if (r and results[1] == VID_ and results[2] == PID_) {
+            LOGD("match device: vid:%s, pid:%s", VID_.c_str(), PID_.c_str());
+            return info.port;
+        }
+    }
+    return portName_;
+}
+
+void SmartSerial::setVidPid(std::string vid, std::string pid) {
+    VID_ = std::move(vid);
+    PID_ = std::move(pid);
 }

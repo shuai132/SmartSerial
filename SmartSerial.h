@@ -38,8 +38,15 @@ public:
 
     Serial* getSerial();
 
+    void setPortName(std::string portName);
+
+    // Hex string
+    void setVidPid(std::string vid, std::string pid);
+
 private:
     void updateOpenState();
+
+    std::string guessPortName();
 
 private:
     std::unique_ptr<Serial> serial_;
@@ -51,5 +58,9 @@ private:
     static const size_t BUFFER_SIZE = 1024;
     uint8_t buffer_[BUFFER_SIZE]{};
 
-    std::atomic_bool running{true};
+    std::atomic_bool running_{true};
+
+    std::string portName_;
+    std::string VID_;
+    std::string PID_;
 };
