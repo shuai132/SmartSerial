@@ -49,7 +49,7 @@ private:
     OnReadHandle onReadHandle_;
     OnOpenHandle onOpenHandle_;
     static const size_t BUFFER_SIZE = 1024;
-    uint8_t buffer_[BUFFER_SIZE];
+    uint8_t buffer_[BUFFER_SIZE]{};
 
     std::atomic_bool running{true};
 };

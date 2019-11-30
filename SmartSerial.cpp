@@ -26,13 +26,21 @@ SmartSerial::SmartSerial(const std::string& port, uint32_t baudrate)
         while(running) {
             try {
                 if (not serial_->isOpen()) {
-                    //LOGD("try open...");
+                    LOGD("try open...");
                     serial_->open();
                     updateOpenState();
                 } else {
-                    bool hasData = serial_->waitReadable();
-                    if (hasData) {
-                        size_t validSize = serial_->available();
+//                    static int count;
+//                    LOGD("check count:%d", count++);
+#if defined(_WIN32)
+                    if (not serial_->available()) {
+                        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                    }
+#else
+                    serial_->waitReadable();
+#endif
+                    size_t validSize = serial_->available();
+                    if (validSize > 0) {
                         size_t size = serial_->read(buffer_, validSize <= BUFFER_SIZE ? validSize : BUFFER_SIZE);
                         if(size > 0 && onReadHandle_) {
                             onReadHandle_(buffer_, size);
@@ -40,7 +48,7 @@ SmartSerial::SmartSerial(const std::string& port, uint32_t baudrate)
                     }
                 }
             } catch (const std::exception& e) {
-                //LOGD("monitorThread_ exception: %s", e.what());
+                LOGD("monitorThread_ exception: %s", e.what());
                 std::this_thread::sleep_for(std::chrono::seconds(CHECK_INTERVAL_SEC));
                 serial_->close();
                 updateOpenState();
