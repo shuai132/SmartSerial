@@ -35,10 +35,8 @@ int main(int argc, char **argv) {
 
     listPort();
 
-    SmartSerial smartSerial(portName);
-
-    // handle will on other thread
-    smartSerial.setOnOpenHandle([](bool isOpen) {
+    SmartSerial smartSerial(portName, 115200, [](bool isOpen) {
+        // handle very likely on other thread
         LOGI("on open handle: %d", isOpen);
     });
 

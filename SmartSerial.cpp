@@ -9,8 +9,8 @@ static std::unique_ptr<T> make_unique(Args&&... args) {
     return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
 }
 
-SmartSerial::SmartSerial(const std::string& port, uint32_t baudrate)
-        : serial_(make_unique<Serial>("", baudrate)) {
+SmartSerial::SmartSerial(const std::string& port, uint32_t baudrate, OnOpenHandle handle)
+        : serial_(make_unique<Serial>("", baudrate)), onOpenHandle_(std::move(handle)), portName_(port) {
     serial_->setPort(port);
 
     if (!port.empty()) {
@@ -25,11 +25,17 @@ SmartSerial::SmartSerial(const std::string& port, uint32_t baudrate)
     // 读取阻塞的超时时间ms 也影响重连判断的速度 1s
     serial_->setTimeout(serial::Timeout::simpleTimeout(1000));
 
-    auto thread = new std::thread([this]{
+    monitorThread_ = make_unique<std::thread>([this]{
         while(running_) {
             try {
                 if (not serial_->isOpen()) {
-                    serial_->setPort(guessPortName());
+                    auto portName = guessPortName();
+                    if (portName.empty()) {
+                        LOGD("wait device...");
+                        std::this_thread::sleep_for(std::chrono::seconds(CHECK_INTERVAL_SEC));
+                        continue;
+                    }
+                    serial_->setPort(portName);
                     LOGD("try open: %s", serial_->getPort().c_str());
                     serial_->open();
                     updateOpenState();
@@ -37,10 +43,14 @@ SmartSerial::SmartSerial(const std::string& port, uint32_t baudrate)
 //                    static int count;
 //                    LOGD("check count:%d", count++);
 #if defined(_WIN32)
+                    // windows不支持waitReadable 采用轮询方式读取数据
+                    // 实际上在大数据量传输时更有效率
+                    // 100ms是为了相对及时取数据又不占用过多CPU
                     if (not serial_->available()) {
                         std::this_thread::sleep_for(std::chrono::milliseconds(100));
                     }
 #else
+                    // unix系统使用阻塞方式读取 更具功耗优势
                     serial_->waitReadable();
 #endif
                     size_t validSize = serial_->available();
@@ -60,7 +70,6 @@ SmartSerial::SmartSerial(const std::string& port, uint32_t baudrate)
         }
         serial_->close();
     });
-    monitorThread_ = std::unique_ptr<std::thread>(thread);
 }
 
 SmartSerial::~SmartSerial() {
@@ -77,6 +86,10 @@ void SmartSerial::setOnOpenHandle(const OnOpenHandle& handle) {
 }
 
 bool SmartSerial::write(const uint8_t* data, size_t size) {
+    if (not serial_->isOpen()) {
+        LOGD("serial not open, abort write!");
+        return false;
+    }
     try {
         // 防止一次不能发送完 测试发现实际上即使在极端情况下也都能一次发送完的
         size_t hasWriteSize = 0;
@@ -109,7 +122,9 @@ SmartSerial::Serial* SmartSerial::getSerial() {
 
 void SmartSerial::updateOpenState() {
     bool isOpen = serial_->isOpen();
-    LOGD("open state:%d", isOpen);
+    if (isOpen_ == isOpen) return;
+    LOGD("open state: %d", isOpen);
+    isOpen_ = isOpen;
     if (onOpenHandle_) {
         onOpenHandle_(isOpen);
     }
@@ -124,6 +139,11 @@ std::string SmartSerial::guessPortName() {
     if (!portName_.empty())
         return portName_;
 
+    if (VID_.empty() and PID_.empty()) {
+        LOGD("not set VID and PID");
+        return portName_;
+    }
+
     auto ports = serial::list_ports();
     for (const auto& info : ports) {
         const auto& hardwareId = info.hardware_id;
@@ -133,11 +153,6 @@ std::string SmartSerial::guessPortName() {
 
         if (hardwareId == "n/a") continue;
 
-        if (VID_.empty() and PID_.empty()) {
-            LOGD("auto select a port: %s", info.port.c_str());
-            return info.port;
-        }
-
 #if defined(_WIN32)
         std::regex re("VID_(.*)&PID_(.*)&");
 #else
@@ -145,9 +160,16 @@ std::string SmartSerial::guessPortName() {
 #endif
         std::smatch results;
         auto r = std::regex_search(hardwareId, results, re);
-        if (r and results[1] == VID_ and results[2] == PID_) {
-            LOGD("match device: vid:%s, pid:%s", VID_.c_str(), PID_.c_str());
-            return info.port;
+        if (r) {
+            auto vid = results[1].str();
+            auto pid = results[2].str();
+            std::transform(vid.begin(), vid.end(), vid.begin(), tolower);
+            std::transform(pid.begin(), pid.end(), pid.begin(), tolower);
+
+            if (vid == VID_ and pid == PID_) {
+                LOGD("match device: vid:%s, pid:%s", VID_.c_str(), PID_.c_str());
+                return info.port;
+            }
         }
     }
     return portName_;
@@ -156,4 +178,7 @@ std::string SmartSerial::guessPortName() {
 void SmartSerial::setVidPid(std::string vid, std::string pid) {
     VID_ = std::move(vid);
     PID_ = std::move(pid);
+
+    std::transform(VID_.begin(), VID_.end(), VID_.begin(), tolower);
+    std::transform(PID_.begin(), PID_.end(), PID_.begin(), tolower);
 }

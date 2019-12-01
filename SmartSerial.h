@@ -13,7 +13,7 @@ class SmartSerial {
     using OnOpenHandle = std::function<void(bool isOpen)>;
 
 public:
-    explicit SmartSerial(const std::string& port = "", uint32_t baudrate = 115200);
+    explicit SmartSerial(const std::string& port = "", uint32_t baudrate = 115200, OnOpenHandle handle = nullptr);
 
     ~SmartSerial();
 
@@ -23,24 +23,35 @@ public:
 
 public:
     /**
-     * 设置接收的handle 注意回调将发生在其他线程
+     * 设置接收的handle 注意回调将发生在读取线程
      * @param handle
      */
     void setOnReadHandle(const OnReadHandle& handle);
 
+    /**
+     * 设置打开/关闭handle 注意回调很可能发生在读取线程
+     * @param handle
+     */
     void setOnOpenHandle(const OnOpenHandle& handle);
 
+    /**
+     * 写入数据 直到写入所有再返回
+     * @param data
+     * @param size
+     * @return 写入成功/失败
+     */
     bool write(const uint8_t* data, size_t size);
 
     bool write(const std::string& data);
 
     bool write(const std::vector<uint8_t>& data);
 
+    // 获取serial 其大部分方法都是线程安全的
     Serial* getSerial();
 
     void setPortName(std::string portName);
 
-    // Hex string
+    // Hex string, eg: setVidPid("1234", "abCD")
     void setVidPid(std::string vid, std::string pid);
 
 private:
@@ -63,4 +74,5 @@ private:
     std::string portName_;
     std::string VID_;
     std::string PID_;
+    bool isOpen_ = false;
 };
