@@ -30,7 +30,7 @@ SmartSerial::SmartSerial(const std::string& port, uint32_t baudrate, OnOpenHandl
             try {
                 if (not serial_->isOpen()) {
                     auto portName = guessPortName();
-                    if (portName.empty()) {
+                    if (portName.empty() || not autoOpen_) {
                         LOGD("wait device...");
                         std::this_thread::sleep_for(std::chrono::seconds(CHECK_INTERVAL_SEC));
                         continue;
@@ -146,6 +146,18 @@ void SmartSerial::setVidPid(std::string vid, std::string pid) {
 
 bool SmartSerial::isOpen() {
     return isOpen_;
+}
+
+void SmartSerial::open() {
+    autoOpen_ = true;
+}
+
+void SmartSerial::close() {
+    autoOpen_ = false;
+    if (serial_->isOpen()) {
+        serial_->close();
+        updateOpenState();
+    }
 }
 
 void SmartSerial::updateOpenState() {

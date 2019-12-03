@@ -47,9 +47,20 @@ int main(int argc, char **argv) {
         LOGI("on read handle: size:%zu, data:%s, count=%d", size, str.c_str(), count++);
     });
 
+    int count = 0;
     for(;;) {
         std::this_thread::sleep_for(std::chrono::seconds(1));
         smartSerial.write("hello world");
+
+        LOG("write count: %d", ++count);
+
+        if (count == 3) {
+            smartSerial.open();
+        } else if (count == 6) {
+            smartSerial.close();
+        } else if (count == 8) {
+            break;
+        }
     }
 
     return 0;

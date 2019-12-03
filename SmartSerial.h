@@ -56,6 +56,12 @@ public:
 
     bool isOpen();
 
+    // see OpenHandle
+    void open();
+
+    // see OpenHandle
+    void close();
+
 private:
     void updateOpenState();
 
@@ -76,4 +82,6 @@ private:
     std::string vid_;
     std::string pid_;
     bool isOpen_ = false;
+
+    bool autoOpen_ = true;
 };
