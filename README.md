@@ -27,19 +27,19 @@
 ```bash
 git clone --recursive https://github.com/shuai132/SmartSerial.git
 ```
-* how to use
+* simple usage
 ```cpp
-
 #include "SmartSerial.h"
 
-int main() {
-    SmartSerial smartSerial("/dev/ttyUSB0");
-    smartSerial.setOnReadHandle([](const uint8_t* data, size_t size) {
-        // on read data(other thread)
-    });
-    smartSerial.write("hello world");
-    return 0;
-}
+SmartSerial smartSerial("/dev/ttyUSB0");
+smartSerial.setOnOpenHandle([](bool isOpen) {
+    // handle very likely on other thread
+});
+smartSerial.setOnReadHandle([](const uint8_t* data, size_t size) {
+    // on read data(other thread)
+});
+
+smartSerial.write("hello world");
 ```
 * example  
 [example/smartserial_example.cpp](example/smartserial_example.cpp)

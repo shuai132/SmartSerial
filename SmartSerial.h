@@ -14,6 +14,7 @@ class SmartSerial {
 
 public:
     explicit SmartSerial(const std::string& port = "", uint32_t baudrate = 115200, OnOpenHandle handle = nullptr);
+    explicit SmartSerial(const std::string& vid, const std::string& pid, OnOpenHandle handle = nullptr);
 
     ~SmartSerial();
 
@@ -46,13 +47,14 @@ public:
 
     bool write(const std::vector<uint8_t>& data);
 
-    // 获取serial 其大部分方法都是线程安全的
-    Serial* getSerial();
+    void setPortName(const std::string& portName);
 
-    void setPortName(std::string portName);
+    std::string getPortName();
 
     // Hex string, eg: setVidPid("1234", "abCD")
     void setVidPid(std::string vid, std::string pid);
+
+    bool isOpen();
 
 private:
     void updateOpenState();
@@ -71,8 +73,7 @@ private:
 
     std::atomic_bool running_{true};
 
-    std::string portName_;
-    std::string VID_;
-    std::string PID_;
+    std::string vid_;
+    std::string pid_;
     bool isOpen_ = false;
 };

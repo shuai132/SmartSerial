@@ -10,15 +10,15 @@ static std::unique_ptr<T> make_unique(Args&&... args) {
 }
 
 SmartSerial::SmartSerial(const std::string& port, uint32_t baudrate, OnOpenHandle handle)
-        : serial_(make_unique<Serial>("", baudrate)), onOpenHandle_(std::move(handle)), portName_(port) {
-    serial_->setPort(port);
+        : serial_(make_unique<Serial>("", baudrate)), onOpenHandle_(std::move(handle)) {
+    setPortName(port);
 
     if (!port.empty()) {
         try {
             serial_->open();
             updateOpenState();
         } catch (const std::exception& e) {
-            LOGE("open port exception: %s", e.what());
+            LOGE("open failed: %s", e.what());
         }
     }
 
@@ -35,8 +35,8 @@ SmartSerial::SmartSerial(const std::string& port, uint32_t baudrate, OnOpenHandl
                         std::this_thread::sleep_for(std::chrono::seconds(CHECK_INTERVAL_SEC));
                         continue;
                     }
-                    serial_->setPort(portName);
-                    LOGD("try open: %s", serial_->getPort().c_str());
+                    setPortName(portName);
+                    LOGD("try open: %s", portName.c_str());
                     serial_->open();
                     updateOpenState();
                 } else {
@@ -70,6 +70,11 @@ SmartSerial::SmartSerial(const std::string& port, uint32_t baudrate, OnOpenHandl
         }
         serial_->close();
     });
+}
+
+SmartSerial::SmartSerial(const std::string& vid, const std::string& pid, SmartSerial::OnOpenHandle handle)
+    : SmartSerial("", 115200, std::move(handle)) {
+    setVidPid(vid, pid);
 }
 
 SmartSerial::~SmartSerial() {
@@ -116,8 +121,31 @@ bool SmartSerial::write(const std::vector<uint8_t>& data) {
     return write(data.data(), data.size());
 }
 
-SmartSerial::Serial* SmartSerial::getSerial() {
-    return serial_.get();
+void SmartSerial::setPortName(const std::string& portName) {
+    LOGD("setPortName: %s", portName.c_str());
+    auto oldName = serial_->getPort();
+    if (portName == oldName) return;
+    serial_->setPort(portName);
+    if (serial_->isOpen()) {
+        serial_->close();
+        updateOpenState();
+    }
+}
+
+std::string SmartSerial::getPortName() {
+    return serial_->getPort();
+}
+
+void SmartSerial::setVidPid(std::string vid, std::string pid) {
+    vid_ = std::move(vid);
+    pid_ = std::move(pid);
+
+    std::transform(vid_.begin(), vid_.end(), vid_.begin(), tolower);
+    std::transform(pid_.begin(), pid_.end(), pid_.begin(), tolower);
+}
+
+bool SmartSerial::isOpen() {
+    return isOpen_;
 }
 
 void SmartSerial::updateOpenState() {
@@ -130,18 +158,14 @@ void SmartSerial::updateOpenState() {
     }
 }
 
-void SmartSerial::setPortName(std::string portName) {
-    LOGD("setPortName: %s", portName.c_str());
-    portName_ = std::move(portName);
-}
-
 std::string SmartSerial::guessPortName() {
-    if (!portName_.empty())
-        return portName_;
+    auto portName = serial_->getPort();
+    if (!portName.empty())
+        return portName;
 
-    if (VID_.empty() and PID_.empty()) {
+    if (vid_.empty() and pid_.empty()) {
         LOGD("not set VID and PID");
-        return portName_;
+        return portName;
     }
 
     auto ports = serial::list_ports();
@@ -166,19 +190,11 @@ std::string SmartSerial::guessPortName() {
             std::transform(vid.begin(), vid.end(), vid.begin(), tolower);
             std::transform(pid.begin(), pid.end(), pid.begin(), tolower);
 
-            if (vid == VID_ and pid == PID_) {
-                LOGD("match device: vid:%s, pid:%s", VID_.c_str(), PID_.c_str());
+            if (vid == vid_ and pid == pid_) {
+                LOGD("match device: vid:%s, pid:%s", vid_.c_str(), pid_.c_str());
                 return info.port;
             }
         }
     }
-    return portName_;
-}
-
-void SmartSerial::setVidPid(std::string vid, std::string pid) {
-    VID_ = std::move(vid);
-    PID_ = std::move(pid);
-
-    std::transform(VID_.begin(), VID_.end(), VID_.begin(), tolower);
-    std::transform(PID_.begin(), PID_.end(), PID_.begin(), tolower);
+    return portName;
 }
