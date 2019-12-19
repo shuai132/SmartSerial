@@ -1,7 +1,9 @@
-#include "SmartSerial.h"
-
 #include <utility>
 #include <regex>
+
+#include "SmartSerial.h"
+
+//#define LOG_SHOW_VERBOSE
 #include "log.h"
 
 template<typename T, typename... Args>
@@ -17,7 +19,7 @@ SmartSerial::SmartSerial(const std::string& port, uint32_t baudrate, OnOpenHandl
         try {
             serial_->open();
             updateOpenState();
-        } catch (const std::exception& e) {
+        } catch (const serial::SerialException& e) {
             LOGE("open failed: %s", e.what());
         }
     }
@@ -31,7 +33,7 @@ SmartSerial::SmartSerial(const std::string& port, uint32_t baudrate, OnOpenHandl
                 if (not serial_->isOpen()) {
                     auto portName = guessPortName();
                     if (portName.empty() || not autoOpen_) {
-                        LOGD("wait device...");
+                        LOGV("wait device...");
                         std::this_thread::sleep_for(std::chrono::seconds(CHECK_INTERVAL_SEC));
                         continue;
                     }
@@ -61,7 +63,7 @@ SmartSerial::SmartSerial(const std::string& port, uint32_t baudrate, OnOpenHandl
                         }
                     }
                 }
-            } catch (const std::exception& e) {
+            } catch (const serial::SerialException& e) {
                 LOGD("monitorThread_ exception: %s", e.what());
                 std::this_thread::sleep_for(std::chrono::seconds(CHECK_INTERVAL_SEC));
                 serial_->close();
@@ -107,7 +109,7 @@ bool SmartSerial::write(const uint8_t* data, size_t size) {
             hasWriteSize += writeSize;
         }
         return true;
-    } catch (const std::exception& e) {
+    } catch (const serial::SerialException& e) {
         LOGE("write error: %s", e.what());
     }
     return false;
