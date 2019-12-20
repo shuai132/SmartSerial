@@ -1,6 +1,9 @@
 # SmartSerial
 
-[![Build Status](https://github.com/shuai132/SmartSerial/workflows/build/badge.svg)](https://github.com/shuai132/SmartSerial/actions?workflow=build)
+
+[![Build Status](https://github.com/shuai132/SmartSerial/workflows/Windows/badge.svg)](https://github.com/shuai132/SmartSerial/actions?workflow=Windows)
+[![Build Status](https://github.com/shuai132/SmartSerial/workflows/macOS/badge.svg)](https://github.com/shuai132/SmartSerial/actions?workflow=macOS)
+[![Build Status](https://github.com/shuai132/SmartSerial/workflows/Ubuntu/badge.svg)](https://github.com/shuai132/SmartSerial/actions?workflow=Ubuntu)
 
 简化串口使用
 
@@ -18,6 +21,7 @@
 * 数据自动回调
 * 异常自动重连
 * 自动连接设备 通过串口名、VID_PID
+* 全平台支持: macOS、Linux、Windows
 
 注: 当串口名非空时将作为唯一匹配依据 不使用VID_PID
 

@@ -1,0 +1,21 @@
+name: macOS
+
+on: [push, pull_request]
+
+jobs:
+  macOS:
+    runs-on: macOS-latest
+
+    steps:
+      - uses: actions/checkout@v1
+        with:
+          fetch-depth: 1
+
+      - name: Submodules
+        run: git submodule update --init --recursive
+
+      - name: CMake Build
+        run: |
+          mkdir build && cd build
+          cmake ..
+          make
