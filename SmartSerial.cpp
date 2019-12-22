@@ -30,7 +30,9 @@ SmartSerial::SmartSerial(const std::string& port, uint32_t baudrate, OnOpenHandl
     monitorThread_ = make_unique<std::thread>([this]{
         while(running_) {
             try {
+                std::lock_guard<std::recursive_mutex> lockGuard(serialMutex_);
                 if (not serial_->isOpen()) {
+                    serialMutex_.unlock();
                     auto portName = guessPortName();
                     if (portName.empty() || not autoOpen_) {
                         LOGV("wait device...");
@@ -39,37 +41,44 @@ SmartSerial::SmartSerial(const std::string& port, uint32_t baudrate, OnOpenHandl
                     }
                     setPortName(portName);
                     LOGD("try open: %s", portName.c_str());
-                    serial_->open();
+                    {
+                        std::lock_guard<std::recursive_mutex> lockGuard2(serialMutex_);
+                        serial_->open();
+                    }
                     updateOpenState();
                 } else {
+                    /// still locked here!
 //                    static int count;
 //                    LOGD("check count:%d", count++);
-#if defined(_WIN32)
-                    // windows不支持waitReadable 采用轮询方式读取数据
-                    // 实际上在大数据量传输时更有效率
+
+                    // 采用轮询方式读取数据 在大数据量传输时更有效率
                     // 100ms是为了相对及时取数据又不占用过多CPU
-                    if (not serial_->available()) {
-                        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-                    }
-#else
-                    // unix系统使用阻塞方式读取 更具功耗优势
-                    serial_->waitReadable();
-#endif
                     size_t validSize = serial_->available();
-                    if (validSize > 0) {
-                        size_t size = serial_->read(buffer_, validSize <= BUFFER_SIZE ? validSize : BUFFER_SIZE);
-                        if(size > 0 && onReadHandle_) {
-                            onReadHandle_(buffer_, size);
-                        }
+
+                    if (validSize == 0) {
+                        serialMutex_.unlock();
+                        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                        continue;
+                    }
+
+                    size_t size = serial_->read(buffer_, validSize <= BUFFER_SIZE ? validSize : BUFFER_SIZE);
+                    serialMutex_.unlock();
+                    std::lock_guard<std::recursive_mutex> lockGuard2(settingMutex_);
+                    if(size > 0 && onReadHandle_) {
+                        onReadHandle_(buffer_, size);
                     }
                 }
             } catch (const serial::SerialException& e) {
                 LOGD("monitorThread_ exception: %s", e.what());
                 std::this_thread::sleep_for(std::chrono::seconds(CHECK_INTERVAL_SEC));
-                serial_->close();
+                {
+                    std::lock_guard<std::recursive_mutex> lockGuard(serialMutex_);
+                    serial_->close();
+                }
                 updateOpenState();
             }
         }
+        std::lock_guard<std::recursive_mutex> lockGuard(serialMutex_);
         serial_->close();
     });
 }
@@ -85,15 +94,19 @@ SmartSerial::~SmartSerial() {
 }
 
 void SmartSerial::setOnReadHandle(const OnReadHandle& handle) {
+    std::lock_guard<std::recursive_mutex> lockGuard(settingMutex_);
     onReadHandle_ = handle;
 }
 
 void SmartSerial::setOnOpenHandle(const OnOpenHandle& handle) {
+    std::lock_guard<std::recursive_mutex> lockGuard(settingMutex_);
     onOpenHandle_ = handle;
 }
 
 bool SmartSerial::write(const uint8_t* data, size_t size) {
-    if (not serial_->isOpen()) {
+    std::lock_guard<std::recursive_mutex> lockGuard(serialMutex_);
+
+    if (not isOpen_) {
         LOGD("serial not open, abort write!");
         return false;
     }
@@ -124,6 +137,10 @@ bool SmartSerial::write(const std::vector<uint8_t>& data) {
 }
 
 void SmartSerial::setPortName(const std::string& portName) {
+    std::lock(settingMutex_, serialMutex_);
+    std::lock_guard<std::recursive_mutex> lockGuard(settingMutex_, std::adopt_lock);
+    std::lock_guard<std::recursive_mutex> lockGuard2(serialMutex_, std::adopt_lock);
+
     LOGD("setPortName: %s", portName.c_str());
     auto oldName = serial_->getPort();
     if (portName == oldName) return;
@@ -135,10 +152,12 @@ void SmartSerial::setPortName(const std::string& portName) {
 }
 
 std::string SmartSerial::getPortName() {
+    std::lock_guard<std::recursive_mutex> lockGuard(serialMutex_);
     return serial_->getPort();
 }
 
 void SmartSerial::setVidPid(std::string vid, std::string pid) {
+    std::lock_guard<std::recursive_mutex> lockGuard(settingMutex_);
     vid_ = std::move(vid);
     pid_ = std::move(pid);
 
@@ -147,6 +166,7 @@ void SmartSerial::setVidPid(std::string vid, std::string pid) {
 }
 
 bool SmartSerial::isOpen() {
+    std::lock_guard<std::recursive_mutex> lockGuard(settingMutex_);
     return isOpen_;
 }
 
@@ -155,6 +175,10 @@ void SmartSerial::open() {
 }
 
 void SmartSerial::close() {
+    std::lock(settingMutex_, serialMutex_);
+    std::lock_guard<std::recursive_mutex> lockGuard(settingMutex_, std::adopt_lock);
+    std::lock_guard<std::recursive_mutex> lockGuard2(serialMutex_, std::adopt_lock);
+
     autoOpen_ = false;
     if (serial_->isOpen()) {
         serial_->close();
@@ -163,7 +187,12 @@ void SmartSerial::close() {
 }
 
 void SmartSerial::updateOpenState() {
+    std::lock(settingMutex_, serialMutex_);
+    std::lock_guard<std::recursive_mutex> lockGuard(settingMutex_, std::adopt_lock);
+    std::lock_guard<std::recursive_mutex> lockGuard2(serialMutex_, std::adopt_lock);
+
     bool isOpen = serial_->isOpen();
+    serialMutex_.unlock();
     if (isOpen_ == isOpen) return;
     LOGD("open state: %d", isOpen);
     isOpen_ = isOpen;
@@ -173,7 +202,13 @@ void SmartSerial::updateOpenState() {
 }
 
 std::string SmartSerial::guessPortName() {
+    std::lock(settingMutex_, serialMutex_);
+    std::lock_guard<std::recursive_mutex> lockGuard(settingMutex_, std::adopt_lock);
+    std::lock_guard<std::recursive_mutex> lockGuard2(serialMutex_, std::adopt_lock);
+
     auto portName = serial_->getPort();
+    serialMutex_.unlock();
+
     if (!portName.empty())
         return portName;
 

@@ -4,6 +4,7 @@
 #include <thread>
 #include <functional>
 #include <atomic>
+#include <mutex>
 
 #include "serial/serial.h"
 
@@ -72,6 +73,9 @@ private:
     std::unique_ptr<std::thread> monitorThread_;
     const uint32_t CHECK_INTERVAL_SEC = 2;
 
+    std::recursive_mutex serialMutex_;
+    std::recursive_mutex settingMutex_;
+
     OnReadHandle onReadHandle_;
     OnOpenHandle onOpenHandle_;
     static const size_t BUFFER_SIZE = 1024;
@@ -81,7 +85,7 @@ private:
 
     std::string vid_;
     std::string pid_;
-    bool isOpen_ = false;
+    std::atomic_bool isOpen_ {false};
 
-    bool autoOpen_ = true;
+    std::atomic_bool autoOpen_ {true};
 };
