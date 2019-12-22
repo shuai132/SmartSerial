@@ -24,9 +24,6 @@ SmartSerial::SmartSerial(const std::string& port, uint32_t baudrate, OnOpenHandl
         }
     }
 
-    // 读取阻塞的超时时间ms 也影响重连判断的速度 1s
-    serial_->setTimeout(serial::Timeout::simpleTimeout(1000));
-
     monitorThread_ = make_unique<std::thread>([this]{
         while(running_) {
             try {
@@ -48,18 +45,21 @@ SmartSerial::SmartSerial(const std::string& port, uint32_t baudrate, OnOpenHandl
                     updateOpenState();
                 } else {
                     /// still locked here!
-//                    static int count;
-//                    LOGD("check count:%d", count++);
+                    // 为了在大数据量传输时更有效率和兼容Windows 采用轮询方式读取数据
+                    // 为了相对及时取数据又不占用过多CPU 将进行动态调整读取等待的延迟
+                    // 也即: 默认等待延时100ms 距离上次接收时间小于1s时等待时间为1ms
 
-                    // 采用轮询方式读取数据 在大数据量传输时更有效率
-                    // 100ms是为了相对及时取数据又不占用过多CPU
                     size_t validSize = serial_->available();
+                    auto now = std::chrono::steady_clock::now();
 
                     if (validSize == 0) {
                         serialMutex_.unlock();
-                        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                        bool fastMode = now - lastReadTime_ < std::chrono::seconds(1);
+                        std::this_thread::sleep_for(std::chrono::milliseconds(fastMode ? 1 : 100));
                         continue;
                     }
+
+                    lastReadTime_ = now;
 
                     size_t size = serial_->read(buffer_, validSize <= BUFFER_SIZE ? validSize : BUFFER_SIZE);
                     serialMutex_.unlock();

@@ -5,6 +5,7 @@
 #include <functional>
 #include <atomic>
 #include <mutex>
+#include <chrono>
 
 #include "serial/serial.h"
 
@@ -88,4 +89,6 @@ private:
     std::atomic_bool isOpen_ {false};
 
     std::atomic_bool autoOpen_ {true};
+
+    std::chrono::steady_clock::time_point lastReadTime_;
 };
