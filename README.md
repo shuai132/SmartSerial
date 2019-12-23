@@ -1,15 +1,10 @@
 # SmartSerial
 
-
 [![Build Status](https://github.com/shuai132/SmartSerial/workflows/Windows/badge.svg)](https://github.com/shuai132/SmartSerial/actions?workflow=Windows)
 [![Build Status](https://github.com/shuai132/SmartSerial/workflows/macOS/badge.svg)](https://github.com/shuai132/SmartSerial/actions?workflow=macOS)
 [![Build Status](https://github.com/shuai132/SmartSerial/workflows/Ubuntu/badge.svg)](https://github.com/shuai132/SmartSerial/actions?workflow=Ubuntu)
 
-简化串口使用
-
-基于[wjwwood/serial](https://github.com/wjwwood/serial)的一个Fork: [shuai132/serial](https://github.com/shuai132/serial/tree/cmake)(cmake分支)
-
-优化了cmake和部分代码。
+简化串口编程 提供方便的接口和严格的线程安全特性
 
 ## Requirements
 
@@ -23,8 +18,6 @@
 * 自动连接设备 通过串口名、VID_PID
 * 全平台支持: macOS、Linux、Windows
 * 所有方法严格线程安全
-
-注: 当串口名非空时将作为唯一匹配依据 不使用VID_PID
 
 ## Usage
 
