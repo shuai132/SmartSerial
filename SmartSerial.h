@@ -64,6 +64,9 @@ public:
     // see OpenHandle
     void close();
 
+    // 提供线程安全的方式操作串口其他属性
+    void setSerial(const std::function<void(Serial* serial)>& op);
+
 private:
     void updateOpenState();
 

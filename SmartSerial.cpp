@@ -186,6 +186,11 @@ void SmartSerial::close() {
     }
 }
 
+void SmartSerial::setSerial(const std::function<void(Serial* serial)>& op) {
+    std::lock_guard<std::recursive_mutex> lockGuard(serialMutex_);
+    op(serial_.get());
+}
+
 void SmartSerial::updateOpenState() {
     std::lock(settingMutex_, serialMutex_);
     std::lock_guard<std::recursive_mutex> lockGuard(settingMutex_, std::adopt_lock);
