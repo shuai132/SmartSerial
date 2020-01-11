@@ -109,16 +109,10 @@ bool SmartSerial::write(const uint8_t* data, size_t size) {
         return false;
     }
     try {
-        // 防止一次不能发送完 测试发现实际上即使在极端情况下也都能一次发送完的
         size_t hasWriteSize = 0;
-        while (hasWriteSize < size) {
-            size_t writeSize = serial_->write(data + hasWriteSize, size - hasWriteSize);
-            if (writeSize == 0) {
-                LOGE("serial send payload error");
-                return false;
-            }
-            hasWriteSize += writeSize;
-        }
+        do {
+            hasWriteSize += serial_->write(data + hasWriteSize, size - hasWriteSize);
+        } while (hasWriteSize < size);
         return true;
     } catch (const serial::SerialException& e) {
         LOGE("write error: %s", e.what());
