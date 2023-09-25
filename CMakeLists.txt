@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 3.1)
 
-option(smartserial_BUILD_EXAMPLE "build example" ON)
+option(smartserial_BUILD_EXAMPLE "build example" OFF)
+
+if (CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
+    set(smartserial_BUILD_EXAMPLE ON)
+endif ()
 
 project(smartserial)
 
@@ -18,11 +22,11 @@ add_compile_options(-Wall)
 # smartserial
 add_library(${PROJECT_NAME} STATIC SmartSerial.cpp)
 target_include_directories(${PROJECT_NAME} PUBLIC
-        modules/serial/include
-        .)
+        .
+        modules/serial/include)
 
 # example
-if(smartserial_BUILD_EXAMPLE)
+if (smartserial_BUILD_EXAMPLE)
     link_libraries(${PROJECT_NAME})
     add_executable(smartserial_example example/smartserial_example.cpp)
-endif()
+endif ()
